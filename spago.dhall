@@ -23,7 +23,9 @@ to generate this file without the comments in this block.
   , "maybe"
   , "partial"
   , "prelude"
+  , "quickcheck"
   , "spec"
+  , "spec-quickcheck"
   , "strings"
   , "tuples"
   ]

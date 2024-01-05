@@ -8,12 +8,14 @@ import Data.Foldable (for_)
 import Data.Maybe (fromJust)
 import Effect (Effect)
 import Effect.Aff (launchAff_)
-import Main (Error(..), decode, encode)
+import Main (Error(..), decode, encode, toAscii, toUnicode)
 import Partial.Unsafe (unsafePartial)
 import Test.Spec (Spec, describe, it)
 import Test.Spec.Assertions (shouldEqual)
 import Test.Spec.Reporter.Console (consoleReporter)
 import Test.Spec.Runner (runSpec)
+import Test.Spec.QuickCheck (quickCheck)
+import Test.QuickCheck ((===))
 
 -- Test cases adapted from https://github.com/mathiasbynens/punycode.js/blob/main/tests/tests.js
 
@@ -138,7 +140,7 @@ testData =
 testDomains :: Array TestCase
 testDomains =
   [ { description: ""
-    , decoded: "ma\xF1ana.com"
+    , decoded: "ma\xF1" <> "ana.com"
     , encoded: "xn--maana-pta.com"
     }
   , { -- https://github.com/mathiasbynens/punycode.js/issues/17
@@ -147,7 +149,7 @@ testDomains =
     , encoded: "example.com."
     }
   , { description: ""
-    , decoded: "b\xFCcher.com"
+    , decoded: "b\xFC" <> "cher.com"
     , encoded: "xn--bcher-kva.com"
     }
   , { description: ""
@@ -171,7 +173,7 @@ testDomains =
     , encoded: "\x0\x01\x02foo.bar"
     }
   , { description: "Email address"
-    , decoded: "\x0434\x0436\x0443\x043C\x043B\x0430@\x0434\x0436p\x0443\x043C\x043B\x0430\x0442\x0435\x0441\x0442.b\x0440\x0444a"
+    , decoded: "\x0434\x0436\x0443\x043C\x043B\x0430@\x0434\x0436p\x0443\x043C\x043B\x0430\x0442\x0435\x0441\x0442.b\x0440\x0444" <> "a"
     , encoded: "\x0434\x0436\x0443\x043C\x043B\x0430@xn--p-8sbkgc5ag7bhce.xn--ba-lmcq"
     }
   , { -- https://github.com/mathiasbynens/punycode.js/pull/115
@@ -182,19 +184,19 @@ testDomains =
   ,
     -- separators
     { description: "Using U+002E as separator"
-    , decoded: "ma\xF1ana\x2Ecom"
+    , decoded: "ma\xF1" <> "ana\x2E" <> "com"
     , encoded: "xn--maana-pta.com"
     }
   , { description: "Using U+3002 as separator"
-    , decoded: "ma\xF1ana\x3002com"
+    , decoded: "ma\xF1" <> "ana\x3002" <> "com"
     , encoded: "xn--maana-pta.com"
     }
   , { description: "Using U+FF0E as separator"
-    , decoded: "ma\xF1ana\xFF0Ecom"
+    , decoded: "ma\xF1" <> "ana\xFF0E" <> "com"
     , encoded: "xn--maana-pta.com"
     }
   , { description: "Using U+FF61 as separator"
-    , decoded: "ma\xF1ana\xFF61com"
+    , decoded: "ma\xF1" <> "ana\xFF61" <> "com"
     , encoded: "xn--maana-pta.com"
     }
   ]
@@ -204,6 +206,19 @@ createTest { description, decoded, encoded } =
   it description do
     decode encoded `shouldEqual` (Right decoded)
     encode decoded `shouldEqual` (Right encoded)
+
+createDomainTest :: TestCase -> Spec Unit
+createDomainTest { description, decoded, encoded } =
+  it description do
+    toAscii decoded `shouldEqual` (Right encoded)
+    (toAscii =<< toUnicode encoded) `shouldEqual` (Right encoded)
+
+createIdentityTest :: TestCase -> Spec Unit
+createIdentityTest { description, decoded, encoded } =
+  it description do
+    toAscii encoded `shouldEqual` (Right encoded)
+    toUnicode decoded `shouldEqual` (Right decoded)
+    toUnicode encoded `shouldEqual` (Right encoded)
 
 main :: Effect Unit
 main = launchAff_ $ runSpec [ consoleReporter ] do
@@ -215,3 +230,16 @@ main = launchAff_ $ runSpec [ consoleReporter ] do
       decode "\x81-" `shouldEqual` (Left (NotBasic $ unsafePartial $ fromJust $ toEnum 0x81))
       decode "\x81" `shouldEqual` (Left (NotBasic $ unsafePartial $ fromJust $ toEnum 0x81))
       decode "ls8h=" `shouldEqual` (Left (NotBasic $ unsafePartial $ fromJust $ toEnum 0x3D))
+
+  describe "domains" do
+    for_ testDomains createDomainTest
+
+  describe "identity" do
+    for_ testData createIdentityTest
+
+  describe "inverse" do
+    it "decode(encode(input)) == input" $
+      quickCheck \s -> (decode =<< encode s) === Right s
+
+    it "decode(decode(input)) == decode(input)" $
+      quickCheck \s -> (decode =<< decode s) === decode s

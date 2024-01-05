@@ -1,7 +1,9 @@
 module Main
-  ( Error(..)
-  , decode
+  ( decode
   , encode
+  , toAscii
+  , toUnicode
+  , Error(..)
   ) where
 
 import Prelude
@@ -11,10 +13,16 @@ import Data.Array as Array
 import Data.Either (Either(..), note)
 import Data.Enum (fromEnum, toEnum)
 import Data.Maybe (Maybe(..), fromJust, fromMaybe)
-import Data.String (CodePoint, codePointFromChar, toCodePointArray)
+import Data.String (CodePoint, Pattern(..), codePointFromChar, toCodePointArray)
 import Data.String as String
+import Data.String.Regex (Regex, test)
+import Data.String.Regex as Regex
+import Data.String.Regex.Flags (global)
+import Data.String.Regex.Unsafe (unsafeRegex)
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
+import Effect.Console (log)
+import Effect.Unsafe (unsafePerformEffect)
 import Partial.Unsafe (unsafePartial)
 
 maxInt :: Int
@@ -44,6 +52,12 @@ basicLimit = unsafePartial $ fromJust $ toEnum 0x80
 
 baseMinusTMin :: Int
 baseMinusTMin = base - tMin
+
+nonAsciiRegex :: Regex
+nonAsciiRegex = unsafeRegex "[^\x00-\x7F]" global
+
+separatorRegex :: Regex
+separatorRegex = unsafeRegex "[\x2E\x3002\xFF0E\xFF61]" global
 
 data Error = NotBasic CodePoint | InvalidInput | Overflow
 
@@ -270,3 +284,24 @@ encode decoded = do
   let state = basicEncode $ initEncodeState decoded
   { output } <- stepOuterEncode state
   pure $ String.fromCodePointArray $ output
+
+labelToUnicode :: String -> Either Error String
+labelToUnicode input = fromMaybe (Right input) $ decode <$> String.stripPrefix (Pattern "xn--") input
+
+labelToAscii :: String -> Either Error String
+labelToAscii input | test nonAsciiRegex input = (<>) "xn--" <$> encode input
+labelToAscii input = Right input
+
+mapLabels :: (String -> Either Error String) -> String -> Either Error String
+mapLabels f input = do
+  let i = fromMaybe 0 $ (add 1) <$> String.indexOf (Pattern "@") input
+  let { before, after } = String.splitAt i input
+  let labels = Regex.split separatorRegex after
+  labels' <- traverse f labels
+  pure $ before <> (String.joinWith "." labels')
+
+toUnicode :: String -> Either Error String
+toUnicode input = mapLabels labelToUnicode input
+
+toAscii :: String -> Either Error String
+toAscii input = mapLabels labelToAscii input
