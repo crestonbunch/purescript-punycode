@@ -1,4 +1,4 @@
-module Main
+module Web.Punycode
   ( decode
   , encode
   , toAscii
