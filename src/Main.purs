@@ -21,8 +21,6 @@ import Data.String.Regex.Flags (global)
 import Data.String.Regex.Unsafe (unsafeRegex)
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..))
-import Effect.Console (log)
-import Effect.Unsafe (unsafePerformEffect)
 import Partial.Unsafe (unsafePartial)
 
 maxInt :: Int

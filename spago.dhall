@@ -14,12 +14,10 @@ to generate this file without the comments in this block.
 , dependencies =
   [ "aff"
   , "arrays"
-  , "console"
   , "effect"
   , "either"
   , "enums"
   , "foldable-traversable"
-  , "lists"
   , "maybe"
   , "partial"
   , "prelude"
