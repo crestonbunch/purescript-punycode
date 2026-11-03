@@ -1,0 +1,27 @@
+package:
+  name: punycode
+  publish:
+    version: 1.0.1
+    license: MIT
+    location:
+      githubOwner: crestonbunch
+      githubRepo: purescript-punycode
+  dependencies:
+    - arrays: ">=7.3.0 <8.0.0"
+    - either: ">=6.1.0 <7.0.0"
+    - enums: ">=6.0.1 <7.0.0"
+    - foldable-traversable: ">=6.0.0 <7.0.0"
+    - maybe: ">=6.0.0 <7.0.0"
+    - partial: ">=4.0.0 <5.0.0"
+    - prelude: ">=6.0.1 <7.0.0"
+    - strings: ">=6.0.1 <7.0.0"
+    - tuples: ">=7.0.0 <8.0.0"
+  test:
+    main: Test.Main
+    dependencies:
+      - aff: ">=7.1.0 <8.0.0"
+      - effect: ">=4.0.0 <5.0.0"
+      - quickcheck: ">=8.0.1 <9.0.0"
+      - spec: ">=7.5.5 <8.0.0"
+      - spec-quickcheck: ">=5.0.0 <6.0.0"
+workspace: {}
